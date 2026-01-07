@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Exo+2:ital,wght@0,100..900;1,100..900&family=Inter:wght@100..900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-deep: #02040a;
+  --primary-glow: #ec4899;
+  /* Pink 500 */
+  --secondary-glow: #8b5cf6;
+  /* Purple 500 */
+  --accent-cyan: #22d3ee;
+}
+
+body {
+  background-color: var(--bg-deep);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  /* Deep Space Mesh Gradient */
+  background-image:
+    radial-gradient(circle at 50% -20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 100% 50%, rgba(236, 72, 153, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 0% 50%, rgba(34, 211, 238, 0.1) 0%, transparent 40%),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* --- Crystalline Glass Card --- */
+.dex-card {
+  background: rgba(13, 16, 28, 0.7);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2rem;
+  box-shadow:
+    0 20px 50px -10px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
+  position: relative;
+}
+
+/* Subtle border glow on cards */
+.dex-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* --- Finely Tuned Inputs --- */
+.dex-input-group {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dex-input-group:focus-within {
+  border-color: rgba(236, 72, 153, 0.5);
+  box-shadow: 0 0 30px -5px rgba(236, 72, 153, 0.2);
+  transform: translateY(-1px);
+}
+
+.dex-input-transparent {
+  background: transparent;
+  color: white;
+  outline: none;
+  width: 100%;
+  font-family: 'Exo 2', sans-serif;
+}
+
+/* --- The "Hyper" Button --- */
+.btn-hyper {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%);
+  background-size: 200% 200%;
+  animation: gradient-move 5s ease infinite;
+  border: none;
+  color: white;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 1.25rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px -5px rgba(236, 72, 153, 0.4);
+}
+
+.btn-hyper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -5px rgba(236, 72, 153, 0.6);
+  filter: brightness(1.1);
+}
+
+.btn-hyper:active {
+  transform: scale(0.98);
+}
+
+@keyframes gradient-move {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* --- Typography --- */
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-exo {
+  font-family: 'Exo 2', sans-serif;
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
