@@ -43,25 +43,13 @@
 
 ```
 LYRION/
-├── cmd/
-│   └── lyrion-node/          # Main node executable
-├── internal/
-│   ├── api/                  # JSON-RPC server
-│   ├── consensus/            # Sequencer (PoA)
-│   ├── core/                 # Block, Transaction, Signer
-│   ├── execution/            # State transition logic
-│   ├── mempool/              # Transaction pool
-│   ├── node/                 # P2P networking (LibP2P)
-│   ├── settlement/           # L1 relayer & batcher
-│   └── state/                # BadgerDB state management
-├── contracts/
-│   ├── LyrionBridge.sol      # L1 bridge contract
-│   ├── LyrionToken.sol       # L1 token contract
-│   └── scripts/deploy.js     # Deployment script
-├── lyrion-explorer/          # Block explorer (Next.js)
-├── lyrion-wallet/            # Web wallet (Next.js)
-└── docs/                     # Documentation
-
+├── lyrion-node/              # Core Node & Backend
+│   ├── cmd/                  # Entry points
+│   ├── internal/             # Core logic
+│   └── contracts/            # Smart contracts
+├── lyrion-dex/               # Decentralized Exchange
+├── lyrion-wallet/            # Web Wallet
+└── lyrion-explorer/          # Block Explorer
 ```
 
 ---

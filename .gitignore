@@ -1,5 +1,6 @@
 # Binaries
-lyrion-node
+# Binaries
+# lyrion-node (Linux binary - handled by file type if needed, but creates conflict with dir)
 lyrion-node.exe
 *.exe
 *.dll
