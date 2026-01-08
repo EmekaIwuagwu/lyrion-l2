@@ -46,6 +46,12 @@ type StateDB interface {
 	GetPool(pairName string) *core.Pool
 	SetPool(pairName string, pool *core.Pool)
 	
+	// Block Storage
+	SetBlock(number uint64, block *core.Block) error
+	GetBlock(number uint64) *core.Block
+	SetBlockHeight(height uint64)
+	GetBlockHeight() uint64
+	
 	// Commit writes state to the underlying DB and returns the new root.
 	Commit(deleteEmptyObjects bool) (common.Hash, error)
 }

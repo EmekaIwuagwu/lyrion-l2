@@ -1,143 +1,139 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@/context/WalletContext";
+import {
+    RefreshCw,
+    Copy,
+    Check,
+    ArrowUpRight,
+    ArrowDownLeft
+} from "lucide-react";
+import { motion } from "framer-motion";
 
-// Mock Assets
-const assets = [
-    { symbol: "LYR", name: "Lyrion", amount: "10,450.00", price: 1.24, value: "12,958.00", change: 2.4, icon: "🌌" },
-    { symbol: "WFLR", name: "Wrapped Flare", amount: "1,200.00", price: 0.03, value: "36.00", change: -1.2, icon: "🔥" },
-    { symbol: "USDC", name: "USD Coin", amount: "450.00", price: 1.00, value: "450.00", change: 0.0, icon: "💵" },
-];
+export default function DashboardPage() {
+    const router = useRouter();
+    const { address, assets, refreshBalances, isUnlocked } = useWallet();
+    const [copied, setCopied] = useState(false);
 
-export default function Dashboard() {
-    const [activeTab, setActiveTab] = useState("assets");
+    useEffect(() => {
+        if (!isUnlocked) {
+            router.push("/login");
+        }
+    }, [isUnlocked, router]);
+
+    const copyAddress = () => {
+        if (address) {
+            navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    if (!isUnlocked) return null;
+
+    // Calculate total (demo prices: LYR/FLR = $0.10, USDT = $1)
+    const DEMO_PRICES: Record<string, number> = { LYR: 0.10, FLR: 0.05, USDT: 1.00 };
+    const totalBalance = assets.reduce((acc, curr) => acc + (parseFloat(curr.balance) * (DEMO_PRICES[curr.symbol] || 0)), 0).toFixed(2);
 
     return (
-        <div className="min-h-screen flex flex-col items-center p-6 relative overflow-hidden font-sans">
+        <div className="space-y-8 pb-24 pt-4">
 
-            {/* Dynamic Background */}
-            <div className="absolute top-0 center w-full h-[600px] bg-gradient-to-b from-purple-900/10 via-cyan-900/5 to-transparent pointer-events-none"></div>
+            {/* Portfolio Header */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card rounded-3xl p-8 relative overflow-hidden"
+            >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -mr-16 -mt-16 animate-pulse"></div>
 
-            {/* Header */}
-            <header className="w-full max-w-5xl flex justify-between items-center mb-10 z-10">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-xl">🌌</span>
+                <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                        <div
+                            onClick={copyAddress}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 border border-white/10 cursor-pointer hover:bg-black/40 transition-colors group"
+                        >
+                            <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]"></div>
+                            <span className="font-mono text-xs text-gray-300 group-hover:text-white transition-colors">
+                                {address?.slice(0, 6)}...{address?.slice(-4)}
+                            </span>
+                            {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-gray-500" />}
+                        </div>
+
+                        <button onClick={() => refreshBalances()} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+                            <RefreshCw className="w-4 h-4 text-gray-400" />
+                        </button>
                     </div>
-                    <span className="text-xl font-bold tracking-widest text-white" style={{ fontFamily: '"Exo 2"' }}>LYRION</span>
+
+                    <p className="text-gray-400 text-sm font-medium tracking-wide mb-1">Total Balance</p>
+                    <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 tracking-tight">
+                        ${totalBalance}
+                    </h1>
+                    <p className="text-cyan-400/70 text-xs font-medium mt-2 flex items-center gap-1">
+                        <span className="px-2 py-0.5 bg-cyan-500/10 rounded-full border border-cyan-500/20">Testnet</span>
+                    </p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="bg-black/40 px-4 py-2 rounded-full border border-white/10 flex items-center gap-2 backdrop-blur-md">
-                        <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
-                        <span className="text-xs font-mono text-gray-300">Mainnet • v1.2</span>
+            </motion.div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-4">
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => router.push("/dashboard/send")}
+                    className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 p-5 flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 border border-white/10"
+                >
+                    <div className="p-2 bg-white/20 rounded-lg">
+                        <ArrowUpRight className="w-5 h-5 text-white" />
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 cursor-pointer transition-colors">
-                        ⚙️
+                    <span className="font-bold text-lg text-white">Send</span>
+                </motion.button>
+
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => router.push("/dashboard/receive")}
+                    className="group relative overflow-hidden rounded-2xl bg-[#1e1e2e]/80 border border-white/10 p-5 flex items-center justify-center gap-3 hover:bg-[#1e1e2e] transition-colors"
+                >
+                    <div className="p-2 bg-white/5 rounded-lg border border-white/5 group-hover:border-white/20">
+                        <ArrowDownLeft className="w-5 h-5 text-cyan-400" />
                     </div>
-                </div>
-            </header>
-
-            {/* Main Grid */}
-            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-8 z-10">
-
-                {/* LEFT COLUMN: Portfolio & Assets */}
-                <div className="lg:col-span-2 space-y-6">
-
-                    {/* 1. Master Balance Card */}
-                    <div className="glass-panel p-8 rounded-3xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/20 rounded-full -mr-20 -mt-20 blur-[80px] pointer-events-none group-hover:bg-purple-600/30 transition-all duration-700"></div>
-
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-2">
-                                <p className="text-xs text-gray-400 uppercase tracking-[0.2em] font-bold">Total Portfolio Value</p>
-                                <div className="px-2 py-1 bg-green-500/10 text-green-400 text-[10px] font-bold rounded uppercase border border-green-500/20">+2.4% (24H)</div>
-                            </div>
-
-                            <h1 className="text-5xl font-mono font-bold text-white mb-8 text-shadow-glow tracking-tighter">
-                                $13,444.00
-                            </h1>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <Link href="/dashboard/send">
-                                    <button className="btn-gorgeous w-full py-3.5 rounded-xl font-bold text-white uppercase tracking-widest text-xs flex items-center justify-center gap-2">
-                                        <span>↗</span> Send
-                                    </button>
-                                </Link>
-                                <Link href="/dashboard/receive">
-                                    <button className="w-full bg-white/5 border border-white/10 hover:bg-white/10 py-3.5 rounded-xl font-bold text-white uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2">
-                                        <span>↙</span> Receive
-                                    </button>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. Asset List */}
-                    <div className="glass-panel rounded-3xl overflow-hidden">
-                        <div className="p-5 border-b border-white/5 flex justify-between items-center bg-black/20">
-                            <h3 className="font-bold text-gray-200 uppercase tracking-widest text-xs">Your Assets</h3>
-                            <button className="text-xs text-cyan-400 hover:text-cyan-300 font-bold tracking-wide transition-colors">+ Import Token</button>
-                        </div>
-
-                        <div className="divide-y divide-white/5">
-                            {assets.map((asset) => (
-                                <div key={asset.symbol} className="p-5 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 text-xl shadow-inner group-hover:scale-110 transition-transform">
-                                            {asset.icon}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-white group-hover:text-cyan-400 transition-colors">{asset.name}</div>
-                                            <div className="text-xs text-gray-500 flex items-center gap-1">
-                                                {asset.amount} <span className="text-gray-600">{asset.symbol}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="font-mono font-bold text-white tracking-tight">${asset.value}</div>
-                                        <div className={`text-xs font-bold ${asset.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                            {asset.change > 0 ? '+' : ''}{asset.change}%
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* RIGHT COLUMN: Activity Feed */}
-                <div className="glass-panel rounded-3xl h-full flex flex-col">
-                    <div className="p-6 border-b border-white/5 bg-black/20">
-                        <h3 className="font-bold text-white uppercase tracking-widest text-xs">Activity Feed</h3>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                        {/* Mock Transaction Item */}
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer">
-                            <div className="flex justify-between mb-2">
-                                <span className="text-xs font-bold text-white bg-gray-700 px-2 py-0.5 rounded">SENT</span>
-                                <span className="text-[10px] text-gray-500">2 mins ago</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <div className="text-xs text-gray-400 truncate max-w-[100px]">To: 0x82...91a</div>
-                                <div className="font-mono text-sm text-white font-bold">- 120.00 LYR</div>
-                            </div>
-                        </div>
-
-                        {/* Empty State Mock */}
-                        <div className="p-8 text-center opacity-40 mt-8">
-                            <div className="text-4xl mb-2">📜</div>
-                            <p className="text-xs text-gray-400">No more history</p>
-                        </div>
-                    </div>
-
-                    <div className="p-4 border-t border-white/5 bg-black/20">
-                        <button className="w-full py-3 text-xs font-bold text-gray-400 hover:text-white bg-white/5 rounded-xl transition-colors">View All History</button>
-                    </div>
-                </div>
-
+                    <span className="font-bold text-lg text-gray-200 group-hover:text-white">Receive</span>
+                </motion.button>
             </div>
+
+            {/* Asset List */}
+            <div>
+                <h2 className="text-lg font-bold text-white mb-4 pl-1">Your Assets</h2>
+                <div className="space-y-3">
+                    {assets.map((asset, i) => (
+                        <motion.div
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            key={asset.symbol}
+                            className="glass-panel rounded-2xl p-4 flex items-center justify-between group hover:bg-white/5 transition-colors cursor-pointer border-transparent hover:border-white/10"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center text-white font-bold shadow-lg text-xl`}>
+                                    {asset.icon}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-white text-lg">{asset.name}</h3>
+                                    <p className="text-sm text-gray-500 font-mono">{asset.balance} {asset.symbol}</p>
+                                </div>
+                            </div>
+
+                            <div className="text-right">
+                                <p className="font-bold text-white text-lg">${(parseFloat(asset.balance) * (DEMO_PRICES[asset.symbol] || 0)).toFixed(2)}</p>
+                                <p className="text-xs text-gray-500">@ ${DEMO_PRICES[asset.symbol]?.toFixed(2)}</p>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+
         </div>
     );
 }

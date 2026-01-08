@@ -107,7 +107,11 @@ func main() {
 	rpcServer.StartHTTP(cfg.HTTPPort)
 	
 	// 5. Start L1 Settlement Relayer
-	relayer, err := settlement.NewRelayer(cfg.FlareRPC, seq, "demo", 2) // Settle every 2 blocks
+	l1PrivKey := cfg.BatchSubmitterPri
+	if l1PrivKey == "" {
+		l1PrivKey = "demo" // Fallback to demo mode if no private key configured
+	}
+	relayer, err := settlement.NewRelayer(cfg.FlareRPC, seq, l1PrivKey, 2) // Settle every 2 blocks
 	if err != nil {
 		log.Printf("⚠️ Failed to create relayer: %v (continuing without L1 settlement)", err)
 	} else {

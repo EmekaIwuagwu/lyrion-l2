@@ -1,123 +1,83 @@
 "use client";
 
-import { useState } from 'react';
-import { useWallet } from '@/context/WalletContext';
-import LoginModal from '@/components/LoginModal';
-import AssetCard from '@/components/AssetCard';
-import SendModal from '@/components/SendModal';
-import { LogOut, ArrowUpRight, History, Wallet as WalletIcon, RefreshCw, Copy } from 'lucide-react';
+import React from "react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, ShieldCheck, Zap, Globe } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
-export default function Home() {
-  const { isConnected, address, balances, logout, refreshBalances, isLoading } = useWallet();
-  const [isSendOpen, setIsSendOpen] = useState(false);
-
-  if (!isConnected) return <LoginModal />;
-
-  const copyAddress = () => {
-    if (address) navigator.clipboard.writeText(address);
-  };
+export default function LandingPage() {
+  const router = useRouter();
 
   return (
-    <main className="min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <header className="flex justify-between items-center glass-panel p-4 rounded-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <WalletIcon className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-white text-lg">Lyrion Wallet</h1>
-            <div className="flex items-center gap-2 cursor-pointer group" onClick={copyAddress}>
-              <span className="text-xs text-slate-400 font-mono group-hover:text-indigo-400 transition-colors">
-                {address?.slice(0, 6)}...{address?.slice(-4)}
-              </span>
-              <Copy className="w-3 h-3 text-slate-500 group-hover:text-indigo-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button onClick={refreshBalances} className="p-2 hover:bg-white/5 rounded-lg transition-colors" title="Refresh">
-            <RefreshCw className={`w-5 h-5 text-slate-400 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-medium text-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            Disconnect
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
 
       {/* Hero Section */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Total Balance Card */}
-        <div className="glass-panel p-8 rounded-2xl relative overflow-hidden lg:col-span-2 flex flex-col justify-between min-h-[240px]">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
+      <div className="z-10 flex flex-col items-center max-w-lg w-full text-center space-y-10 animate-fade-in-up">
 
-          <div className="space-y-1 z-10">
-            <span className="text-slate-400 font-medium">Total Portfolio Value</span>
-            <h2 className="text-5xl font-bold text-white tracking-tight">$3,542.40</h2>
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/10 border border-green-500/20 mt-2">
-              <ArrowUpRight className="w-3 h-3 text-green-400" />
-              <span className="text-xs font-bold text-green-400">+5.2% (24h)</span>
-            </div>
+        {/* Brand Identity */}
+        <div className="flex flex-col items-center">
+          <div className="mb-8 transform hover:scale-105 transition-transform duration-700 cursor-pointer">
+            <Logo size="xl" />
           </div>
 
-          <div className="flex gap-4 mt-8 z-10">
+          <h1 className="text-6xl md:text-7xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-cyan-100 to-indigo-200 drop-shadow-2xl">
+            LYRION
+          </h1>
+
+          <div className="flex items-center gap-4 mt-4 opacity-70">
+            <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-cyan-400"></div>
+            <span className="text-sm font-bold tracking-[0.4em] text-cyan-400 uppercase">Premium Wallet</span>
+            <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-cyan-400"></div>
+          </div>
+        </div>
+
+        {/* Value Props */}
+        <div className="grid grid-cols-3 gap-4 w-full opacity-0 animate-fade-in" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
+          <div className="glass-card p-4 rounded-2xl flex flex-col items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-purple-400" />
+            <span className="text-xs text-gray-300 font-bold">Secure</span>
+          </div>
+          <div className="glass-card p-4 rounded-2xl flex flex-col items-center gap-2">
+            <Zap className="w-6 h-6 text-yellow-400" />
+            <span className="text-xs text-gray-300 font-bold">Fast</span>
+          </div>
+          <div className="glass-card p-4 rounded-2xl flex flex-col items-center gap-2">
+            <Globe className="w-6 h-6 text-cyan-400" />
+            <span className="text-xs text-gray-300 font-bold">L2 Native</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="w-full space-y-4 opacity-0 animate-fade-in" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
+          <button
+            onClick={() => router.push("/login")}
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 group border border-white/10"
+          >
+            <span>Access Wallet</span>
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <div className="flex gap-4">
             <button
-              onClick={() => setIsSendOpen(true)}
-              className="px-6 py-3 rounded-xl primary-gradient text-white font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+              onClick={() => router.push("/register/password")}
+              className="flex-1 py-4 glass-panel hover:bg-white/10 rounded-2xl text-white font-bold transition-all border border-white/10"
             >
-              <ArrowUpRight className="w-5 h-5" />
-              Send Assets
+              Create New
             </button>
-            <button className="px-6 py-3 rounded-xl glass-button text-white font-medium hover:bg-white/10 transition-colors">
-              Bridge to L1
+            <button
+              onClick={() => router.push("/import")}
+              className="flex-1 py-4 glass-panel hover:bg-white/10 rounded-2xl text-white font-bold transition-all border border-white/10"
+            >
+              Import
             </button>
           </div>
         </div>
 
-        {/* Recent Activity Mini-List (Placeholder for now) */}
-        <div className="glass-panel p-6 rounded-2xl flex flex-col">
-          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <History className="w-4 h-4 text-indigo-400" />
-            Recent Activity
-          </h3>
-          <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            {[1, 2, 3].map((_, i) => (
-              <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer border border-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
-                    <ArrowUpRight className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">Sent LYR</p>
-                    <p className="text-xs text-slate-500">To: 0x709...79C8</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-white">-10.00</p>
-                  <p className="text-xs text-slate-500">2 min ago</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <p className="text-xs text-gray-500 mt-8">
+          Powered by Lyrion Layer 2 • Secured by Flare
+        </p>
 
-      {/* Asset Grid */}
-      <section>
-        <h3 className="text-xl font-bold text-white mb-6">Your Assets</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AssetCard symbol="LYR" balance={balances.LYR} price={2.50} color="indigo" />
-          <AssetCard symbol="FLR" balance={balances.FLR} price={0.04} color="pink" />
-          <AssetCard symbol="USDT" balance={balances.USDT} price={1.00} color="emerald" />
-        </div>
-      </section>
-
-      <SendModal isOpen={isSendOpen} onClose={() => setIsSendOpen(false)} />
-    </main>
+      </div>
+    </div>
   );
 }

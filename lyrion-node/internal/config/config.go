@@ -36,6 +36,14 @@ func DefaultConfig() *Config {
 		dataDir = fmt.Sprintf("%s/.lyrion/data", home)
 	}
 
+	// L1 Settlement Configuration
+	flareRPC := os.Getenv("LYRION_L1_RPC")
+	if flareRPC == "" {
+		flareRPC = "https://coston2-api.flare.network/ext/C/rpc" // Flare Coston2 Testnet
+	}
+	
+	l1PrivKey := os.Getenv("LYRION_L1_PRIVATE_KEY") // Set this to enable real L1 settlement
+
 	return &Config{
 		NetworkID:         42069, // LYRION Testnet
 		DataDir:           dataDir,
@@ -44,6 +52,7 @@ func DefaultConfig() *Config {
 		WSHost:            "127.0.0.1",
 		WSPort:            8546,
 		IsSequencer:       true,
-		FlareRPC:          "https://coston-api.flare.network/ext/bc/C/rpc", // Example Flare Testnet
+		FlareRPC:          flareRPC,
+		BatchSubmitterPri: l1PrivKey,
 	}
 }

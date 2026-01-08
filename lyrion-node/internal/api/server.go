@@ -150,6 +150,9 @@ func (s *Server) executeMethod(req *RPCRequest) *RPCResponse {
 	case "lyr_getPool":
 		result, err = s.lyrGetPool(req.Params)
 
+	case "eth_getTransactionReceipt":
+		result, err = s.ethGetTransactionReceipt(req.Params)
+
 	case "eth_getTransactionByHash":
 		result, err = s.ethGetTransactionByHash(req.Params)
 
@@ -167,6 +170,9 @@ func (s *Server) executeMethod(req *RPCRequest) *RPCResponse {
 
 	case "lyr_forceSettle":
 		result, err = s.lyrForceSettle(req.Params)
+
+	case "lyr_getTransactionsByAddress":
+		result, err = s.lyrGetTransactionsByAddress(req.Params)
 		
 	default:
 		return &RPCResponse{
@@ -320,11 +326,22 @@ func (s *Server) ethSendTransaction(params []interface{}) (string, error) {
 		typeVal = tv
 	}
 
+	// Parse Data field (hex encoded)
+	var data []byte
+	if dataStr, ok := txMap["data"].(string); ok && len(dataStr) > 2 {
+		// Decode hex (strip 0x prefix)
+		decoded, err := hexutil.Decode(dataStr)
+		if err == nil {
+			data = decoded
+		}
+	}
+
 	tx := &core.Transaction{
 		Type:  uint8(typeVal),
 		From:  &from,
 		To:    &to,
 		Value: val,
+		Data:  data,
 		Nonce: s.state.GetNonce(from), 
 		Gas:   21000,
 	}
@@ -348,7 +365,12 @@ func (s *Server) ethGetBlockByNumber(params []interface{}) (interface{}, error) 
 	var number uint64
 	if sVal, ok := params[0].(string); ok {
 		if sVal == "latest" {
-			number = s.sequencer.CurrentHeight() - 1
+			current := s.sequencer.CurrentHeight()
+			if current > 0 {
+				number = current - 1
+			} else {
+				number = 0
+			}
 		} else {
 			n, err := hexutil.DecodeUint64(sVal)
 			if err != nil {
@@ -362,8 +384,39 @@ func (s *Server) ethGetBlockByNumber(params []interface{}) (interface{}, error) 
 	if block == nil {
 		return nil, nil // not found
 	}
+
+	txs := []interface{}{}
+	for _, tx := range block.Transactions {
+		txs = append(txs, tx.Hash().Hex())
+	}
 	
-	return block, nil
+	extra := block.Header.Extra
+	if extra == nil {
+		extra = []byte{}
+	}
+
+	return map[string]interface{}{
+		"number":           hexutil.EncodeUint64(block.Header.Number),
+		"hash":             block.Header.Hash().Hex(),
+		"parentHash":       block.Header.ParentHash.Hex(),
+		"nonce":            "0x0000000000000000",
+		"sha3Uncles":       "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+		"logsBloom":        "0x0000000000000000000000000000000000000000000000000000000000000000",
+		"transactionsRoot": block.Header.TxRoot.Hex(),
+		"stateRoot":        block.Header.Root.Hex(),
+		"receiptsRoot":     block.Header.ReceiptRoot.Hex(),
+		"miner":            block.Header.Coinbase.Hex(),
+		"difficulty":       "0x1",
+		"totalDifficulty":  "0x1",
+		"extraData":        hexutil.Encode(extra),
+		"size":             "0x1000",
+		"gasLimit":         hexutil.EncodeUint64(block.Header.GasLimit),
+		"gasUsed":          hexutil.EncodeUint64(block.Header.GasUsed),
+		"timestamp":        hexutil.EncodeUint64(block.Header.Time),
+		"transactions":     txs,
+		"uncles":           []string{},
+		"baseFeePerGas":    nil,
+	}, nil
 }
 
 func (s *Server) lyrGetLatestBlocks(params []interface{}) (interface{}, error) {
@@ -391,6 +444,49 @@ func (s *Server) lyrGetPool(params []interface{}) (interface{}, error) {
 		"reserve1": hexutil.EncodeBig(pool.Reserve1),
 		"totalSupply": hexutil.EncodeBig(pool.TotalSupply),
 	}, nil
+}
+
+func (s *Server) ethGetTransactionReceipt(params []interface{}) (interface{}, error) {
+	if len(params) < 1 {
+		return nil, fmt.Errorf("missing tx hash param")
+	}
+	hashStr, ok := params[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid tx hash param")
+	}
+	
+	txHash := common.HexToHash(hashStr)
+	
+	// Scan blocks
+	height := s.sequencer.CurrentHeight()
+	for i := uint64(1); i < height; i++ {
+		block := s.sequencer.GetBlock(i)
+		if block == nil {
+			continue
+		}
+		for idx, tx := range block.Transactions {
+			if tx.Hash() == txHash {
+				// Found
+				return map[string]interface{}{
+					"transactionHash":   tx.Hash().Hex(),
+					"transactionIndex":  hexutil.EncodeUint64(uint64(idx)),
+					"blockHash":         block.Header.Hash().Hex(),
+					"blockNumber":       hexutil.EncodeUint64(block.Header.Number),
+					"from":              tx.From.Hex(),
+					"to":                tx.To.Hex(),
+					"cumulativeGasUsed": hexutil.EncodeUint64(block.Header.GasUsed), // Simplified
+					"gasUsed":           hexutil.EncodeUint64(21000),
+					"contractAddress":   nil,
+					"logs":              []interface{}{},
+					"logsBloom":         "0x0000000000000000000000000000000000000000000000000000000000000000",
+					"status":            "0x1",
+					"type":              hexutil.EncodeUint64(uint64(tx.Type)),
+					"effectiveGasPrice": hexutil.EncodeUint64(1000000000),
+				}, nil
+			}
+		}
+	}
+	return nil, nil // Not found
 }
 
 func (s *Server) ethGetTransactionByHash(params []interface{}) (interface{}, error) {
@@ -549,3 +645,86 @@ func (s *Server) lyrForceSettle(params []interface{}) (interface{}, error) {
 	
 	return batch, nil
 }
+
+func (s *Server) lyrGetTransactionsByAddress(params []interface{}) (interface{}, error) {
+	if len(params) < 1 {
+		return nil, fmt.Errorf("missing address param")
+	}
+	addrStr, ok := params[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid address param")
+	}
+	
+	targetAddr := common.HexToAddress(addrStr)
+	
+	var txList []map[string]interface{}
+	
+	height := s.sequencer.CurrentHeight()
+	for i := uint64(1); i < height; i++ {
+		block := s.sequencer.GetBlock(i)
+		if block == nil {
+			continue
+		}
+		
+		for _, tx := range block.Transactions {
+			// Check if tx involves the target address
+			isFrom := tx.From != nil && *tx.From == targetAddr
+			isTo := tx.To != nil && *tx.To == targetAddr
+			
+			if isFrom || isTo {
+				txType := "transfer"
+				if tx.Type == 1 {
+					txType = "swap"
+				} else if tx.Type == 2 {
+					txType = "add_liquidity"
+				} else if tx.Type == 3 {
+					txType = "remove_liquidity"
+				}
+				
+				direction := "send"
+				if isTo && !isFrom {
+					direction = "receive"
+				}
+				if tx.Type == 1 {
+					direction = "swap"
+				}
+				
+				// Token symbol from data field
+				symbol := "LYR"
+				if len(tx.Data) > 0 {
+					symbol = string(tx.Data)
+				}
+				
+				fromAddr := ""
+				if tx.From != nil {
+					fromAddr = tx.From.Hex()
+				}
+				toAddr := ""
+				if tx.To != nil {
+					toAddr = tx.To.Hex()
+				}
+				
+				txList = append(txList, map[string]interface{}{
+					"hash":        tx.Hash().Hex(),
+					"type":        txType,
+					"direction":   direction,
+					"from":        fromAddr,
+					"to":          toAddr,
+					"value":       tx.Value.String(),
+					"symbol":      symbol,
+					"blockNumber": block.Header.Number,
+					"timestamp":   block.Header.Time,
+					"status":      "success",
+				})
+			}
+		}
+	}
+	
+	// Reverse to show newest first
+	for i, j := 0, len(txList)-1; i < j; i, j = i+1, j-1 {
+		txList[i], txList[j] = txList[j], txList[i]
+	}
+	
+	return txList, nil
+}
+

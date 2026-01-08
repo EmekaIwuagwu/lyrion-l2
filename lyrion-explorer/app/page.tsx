@@ -43,6 +43,10 @@ const CosmicCard = ({ label, value, sub, icon, accentColor = "purple" }: any) =>
 
 const TableRow = ({ type, data, index }: any) => {
   const isBlock = type === 'block';
+  // Use fullHash for navigation, hash for display
+  const linkHash = data.fullHash || data.hash;
+  const displayHash = data.hash;
+
   return (
     <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 hover:bg-white/5 transition-colors group items-center animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
       {/* Icon */}
@@ -54,9 +58,9 @@ const TableRow = ({ type, data, index }: any) => {
 
       {/* Main Data */}
       <div className="col-span-8 md:col-span-8 flex flex-col justify-center">
-        <Link href={isBlock ? `/block/${data.number}` : `/tx/${data.hash}`}>
+        <Link href={isBlock ? `/block/${data.number}` : `/tx/${linkHash}`}>
           <span className={`font-mono text-sm md:text-base font-medium cursor-pointer transition-colors ${isBlock ? 'text-cyan-400 hover:text-cyan-300' : 'text-pink-400 hover:text-pink-300'}`}>
-            {isBlock ? `#${data.number}` : data.hash}
+            {isBlock ? `#${data.number}` : displayHash}
           </span>
         </Link>
         <div className="flex items-center gap-2 mt-1">
@@ -124,52 +128,60 @@ export default function Home() {
         if (blocks.length > 0) {
           // Process Blocks
           const mappedBlocks = blocks.map((b: any) => {
-            const header = b.Header || b;
-            const blockNum = header.number ?? parseInt(header.number, 16) ?? 0;
-            const txCount = b.Transactions ? b.Transactions.length : 0;
-            const timestamp = header.timestamp || Math.floor(Date.now() / 1000);
+            // New format: blocks are flat objects, not {Header, Transactions}
+            const blockNum = typeof b.number === 'string'
+              ? parseInt(b.number, 16)
+              : (b.number ?? 0);
+            const txCount = Array.isArray(b.transactions) ? b.transactions.length : 0;
+            const timestamp = typeof b.timestamp === 'string'
+              ? parseInt(b.timestamp, 16)
+              : (b.timestamp || Math.floor(Date.now() / 1000));
             const secsAgo = Math.floor((Date.now() / 1000) - timestamp);
 
             return {
               number: blockNum,
-              hash: header.parentHash ? `0x${header.parentHash.slice(2, 10)}...` : "0x0000...",
+              hash: b.hash ? `${b.hash.slice(0, 10)}...` : "0x0000...",
               txs: txCount,
-              time: `${secsAgo}s ago`,
-              size: (txCount * 0.2).toFixed(2),
-              validator: header.coinbase || "0x9999...9999"
+              time: secsAgo < 60 ? `${secsAgo}s ago` : `${Math.floor(secsAgo / 60)}m ago`,
+              size: (txCount * 0.2 + 0.5).toFixed(2),
+              validator: b.miner || "0x9999...9999"
             };
           });
           setLatestBlocks(mappedBlocks);
 
-          // Process Txs (Flatten from blocks)
+          // Process Txs - Fetch full tx details using lyr_getTransactionsByBlock
           for (const b of blocks) {
-            if (b.Transactions && b.Transactions.length > 0) {
-              const header = b.Header || b;
-              const timestamp = header.timestamp || Math.floor(Date.now() / 1000);
-              const secsAgo = Math.floor((Date.now() / 1000) - timestamp);
+            const blockNum = typeof b.number === 'string' ? parseInt(b.number, 16) : (b.number ?? 0);
+            if (blockNum > 0) {
+              try {
+                const blockTxs = await rpcCall<any[]>("lyr_getTransactionsByBlock", [blockNum]);
+                if (blockTxs && blockTxs.length > 0) {
+                  const timestamp = typeof b.timestamp === 'string'
+                    ? parseInt(b.timestamp, 16)
+                    : (b.timestamp || Math.floor(Date.now() / 1000));
+                  const secsAgo = Math.floor((Date.now() / 1000) - timestamp);
 
-              for (const tx of b.Transactions) {
-                // Parse value - can be hex string OR raw number
-                let valueWei: bigint;
-                if (typeof tx.value === 'string') {
-                  valueWei = BigInt(tx.value.startsWith('0x') ? tx.value : `0x${tx.value}`);
-                } else if (typeof tx.value === 'number') {
-                  valueWei = BigInt(Math.floor(tx.value));
-                } else {
-                  valueWei = BigInt(0);
+                  for (const tx of blockTxs) {
+                    // Parse value
+                    let valueWei: bigint;
+                    try {
+                      valueWei = BigInt(tx.value || 0);
+                    } catch {
+                      valueWei = BigInt(0);
+                    }
+                    const valueEth = Number(valueWei) / 1e18;
+
+                    txList.push({
+                      hash: tx.hash ? `${tx.hash.slice(0, 14)}...` : "0x...",
+                      fullHash: tx.hash || "",
+                      time: secsAgo < 60 ? `${secsAgo}s ago` : `${Math.floor(secsAgo / 60)}m ago`,
+                      value: `${valueEth.toFixed(4)} LYR`,
+                      type: tx.type === 1 ? "Swap" : tx.type === 2 ? "AddLiquidity" : "Transfer"
+                    });
+                  }
                 }
-                const valueEth = Number(valueWei) / 1e18;
-
-                // Generate deterministic hash from tx fields
-                const txHashBase = `${tx.from || '0x'}${tx.nonce || 0}${tx.type || 0}`;
-                const hashHex = Array.from(txHashBase).reduce((acc, c) => acc + c.charCodeAt(0).toString(16), '').slice(0, 16);
-
-                txList.push({
-                  hash: `0x${hashHex.padEnd(16, '0')}`,
-                  time: `${secsAgo}s ago`,
-                  value: `${valueEth.toFixed(4)} LYR`,
-                  type: tx.type === 1 ? "Swap" : tx.type === 2 ? "AddLiquidity" : "Transfer"
-                });
+              } catch (e) {
+                console.error(`Failed to fetch txs for block ${blockNum}`, e);
               }
             }
           }

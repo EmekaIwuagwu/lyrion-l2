@@ -234,3 +234,67 @@ func (s *BadgerStateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
 	// Badger commits immediately in this direct-DB model
 	return common.Hash{}, nil
 }
+
+// -- Block Persistence --
+
+var PrefixBlock = []byte("block-")
+var KeyBlockHeight = []byte("meta-blockheight")
+
+// SetBlock stores a block by number
+func (s *BadgerStateDB) SetBlock(number uint64, block *core.Block) error {
+	key := append(PrefixBlock, common.BigToHash(big.NewInt(int64(number))).Bytes()...)
+	val, err := json.Marshal(block)
+	if err != nil {
+		return err
+	}
+	
+	return s.db.Update(func(txn *badger.Txn) error {
+		return txn.Set(key, val)
+	})
+}
+
+// GetBlock retrieves a block by number
+func (s *BadgerStateDB) GetBlock(number uint64) *core.Block {
+	key := append(PrefixBlock, common.BigToHash(big.NewInt(int64(number))).Bytes()...)
+	var block core.Block
+	
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			return json.Unmarshal(val, &block)
+		})
+	})
+	
+	if err != nil {
+		return nil
+	}
+	return &block
+}
+
+// SetBlockHeight stores the current block height
+func (s *BadgerStateDB) SetBlockHeight(height uint64) {
+	val := common.BigToHash(big.NewInt(int64(height))).Bytes()
+	s.db.Update(func(txn *badger.Txn) error {
+		return txn.Set(KeyBlockHeight, val)
+	})
+}
+
+// GetBlockHeight retrieves the current block height
+func (s *BadgerStateDB) GetBlockHeight() uint64 {
+	var height uint64
+	s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(KeyBlockHeight)
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			height = new(big.Int).SetBytes(val).Uint64()
+			return nil
+		})
+	})
+	return height
+}
+

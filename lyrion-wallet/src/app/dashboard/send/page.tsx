@@ -1,98 +1,249 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Logo } from "@/components/Logo";
+import { useWallet } from "@/context/WalletContext";
+import { ArrowLeft, ArrowUpRight, Loader2, CheckCircle2, ChevronRight } from "lucide-react";
+import { ethers } from "ethers";
+import { motion } from "framer-motion";
 
 export default function SendPage() {
     const router = useRouter();
-    const [address, setAddress] = useState("");
-    const [amount, setAmount] = useState("");
-    const [isConfirming, setIsConfirming] = useState(false);
+    const { assets, sendTransaction } = useWallet();
 
-    const handleSend = () => {
-        setIsConfirming(true);
-        setTimeout(() => {
-            alert("Transaction Sent!");
-            router.push("/dashboard");
-        }, 2000);
+    // Form State
+    const [step, setStep] = useState<"input" | "review" | "success">("input");
+    const [selectedAssetSymbol, setSelectedAssetSymbol] = useState("LYR");
+    const [recipient, setRecipient] = useState("");
+    const [amount, setAmount] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [txHash, setTxHash] = useState("");
+
+    const selectedAsset = assets.find(a => a.symbol === selectedAssetSymbol) || assets[0];
+
+    const handleReview = () => {
+        setError("");
+        if (!recipient || !amount) {
+            setError("Please fill in all fields");
+            return;
+        }
+        if (parseFloat(amount) <= 0) {
+            setError("Amount must be greater than 0");
+            return;
+        }
+        if (parseFloat(amount) > parseFloat(selectedAsset.balance)) {
+            setError("Insufficient balance");
+            return;
+        }
+        if (!ethers.isAddress(recipient)) {
+            setError("Invalid recipient address");
+            return;
+        }
+        setStep("review");
+    };
+
+    const handleSend = async () => {
+        setIsLoading(true);
+        setError("");
+        try {
+            const hash = await sendTransaction(recipient, amount, selectedAsset.symbol);
+            setTxHash(hash);
+            setStep("success");
+        } catch (e: any) {
+            console.error(e);
+            setError(e.message || "Transaction failed");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-[#050508] flex flex-col items-center p-6 relative overflow-hidden font-sans">
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="max-w-xl mx-auto pt-10 pb-20 px-4">
 
-            <div className="w-full max-w-lg relative z-10 mt-12">
-                {/* Navbar */}
-                <div className="flex items-center justify-between mb-8">
-                    <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-                        ← Back
-                    </Link>
-                    <h1 className="text-xl font-bold font-heading text-white tracking-widest">SEND ASSETS</h1>
-                    <div className="w-8"></div>
-                </div>
+            {/* Header */}
+            <div className="flex items-center mb-8">
+                <button
+                    onClick={() => step === "input" ? router.back() : setStep("input")}
+                    className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+                >
+                    <ArrowLeft className="w-6 h-6" />
+                </button>
+                <h1 className="text-2xl font-bold ml-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                    {step === "input" ? "Send Assets" : step === "review" ? "Confirm Transfer" : "Sent!"}
+                </h1>
+            </div>
 
-                <div className="glass-panel p-8 rounded-3xl">
-                    <div className="flex justify-center mb-6">
-                        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 shadow-inner">
-                            <Logo size="md" />
-                        </div>
-                    </div>
+            {/* Main Card */}
+            <motion.div
+                key={step}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="glass-card rounded-3xl p-8 relative overflow-hidden"
+            >
+                {/* Decorative Blur */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
-                    <div className="space-y-6">
-                        {/* Asset Select */}
-                        <div>
-                            <label className="text-xs uppercase font-bold text-gray-500 mb-2 block">Asset</label>
-                            <div className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-xl cursor-pointer hover:border-purple-500/50 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <Logo size="sm" />
-                                    <span className="font-bold text-white">Lyrion (LYR)</span>
-                                </div>
-                                <span className="text-sm text-gray-400">Balance: 10,450.00</span>
+                {step === "input" && (
+                    <div className="space-y-8">
+                        {/* Asset Selector */}
+                        <div className="space-y-3">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Select Asset</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {assets.map(asset => (
+                                    <button
+                                        key={asset.symbol}
+                                        onClick={() => setSelectedAssetSymbol(asset.symbol)}
+                                        className={`
+                                            relative p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 group
+                                            ${selectedAssetSymbol === asset.symbol
+                                                ? "bg-indigo-600/20 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+                                                : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20"}
+                                        `}
+                                    >
+                                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${asset.color} flex items-center justify-center text-xs font-bold shadow-md`}>
+                                            {asset.icon}
+                                        </div>
+                                        <span className="font-bold text-sm tracking-wide">{asset.symbol}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono">{asset.balance}</span>
+
+                                        {selectedAssetSymbol === asset.symbol && (
+                                            <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20"></div>
+                                        )}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
                         {/* Recipient */}
-                        <div>
-                            <label className="text-xs uppercase font-bold text-gray-500 mb-2 block">Recipient Address</label>
-                            <input
-                                type="text"
-                                placeholder="0x..."
-                                value={address}
-                                onChange={e => setAddress(e.target.value)}
-                                className="input-field w-full p-4 rounded-xl font-mono text-sm"
-                            />
+                        <div className="space-y-3">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">To</label>
+                            <div className="relative group">
+                                <input
+                                    type="text"
+                                    value={recipient}
+                                    onChange={(e) => setRecipient(e.target.value)}
+                                    placeholder="0x..."
+                                    className="w-full input-field rounded-xl px-4 py-4 font-mono text-sm placeholder:text-gray-600 focus:placeholder:text-gray-500"
+                                />
+                                <div className="absolute right-0 top-0 h-full w-1 bg-gradient-to-b from-transparent via-indigo-500 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                            </div>
                         </div>
 
                         {/* Amount */}
-                        <div>
-                            <label className="text-xs uppercase font-bold text-gray-500 mb-2 block">Amount</label>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Amount</label>
+                                <button
+                                    onClick={() => setAmount(selectedAsset.balance)}
+                                    className="text-xs text-indigo-400 font-bold hover:text-indigo-300 transition-colors"
+                                >
+                                    MAX: {selectedAsset.balance}
+                                </button>
+                            </div>
                             <div className="relative">
                                 <input
                                     type="number"
-                                    placeholder="0.00"
                                     value={amount}
-                                    onChange={e => setAmount(e.target.value)}
-                                    className="input-field w-full p-4 rounded-xl font-mono text-xl font-bold"
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-full input-field rounded-xl px-4 py-4 text-2xl font-bold font-mono placeholder:text-gray-700"
                                 />
-                                <button className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-cyan-400 hover:text-cyan-300">
-                                    MAX
-                                </button>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">
+                                    {selectedAssetSymbol}
+                                </div>
                             </div>
-                            <p className="text-right text-xs text-gray-500 mt-2">≈ $0.00 USD</p>
+                        </div>
+
+                        {/* Error Message */}
+                        {error && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
+                                <p className="text-red-400 text-sm font-medium">{error}</p>
+                            </div>
+                        )}
+
+                        {/* Button */}
+                        <button
+                            onClick={handleReview}
+                            className="w-full btn-primary py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 group"
+                        >
+                            <span>Review Transfer</span>
+                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                    </div>
+                )}
+
+                {step === "review" && (
+                    <div className="space-y-8 animate-fade-in">
+                        <div className="flex flex-col items-center p-6 bg-white/5 rounded-2xl border border-white/5">
+                            <span className="text-sm text-gray-400 mb-2">Sending</span>
+                            <div className="flex items-end gap-2 mb-1">
+                                <span className="text-4xl font-bold text-white tracking-tight">{amount}</span>
+                                <span className="text-xl text-indigo-400 font-bold mb-1">{selectedAssetSymbol}</span>
+                            </div>
+                            <span className="text-xs text-gray-500">≈ ${(parseFloat(amount) * 10).toFixed(2)} USD</span>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center py-3 border-b border-white/5">
+                                <span className="text-gray-400 text-sm">To</span>
+                                <span className="font-mono text-sm text-white truncate max-w-[200px]">{recipient}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 border-b border-white/5">
+                                <span className="text-gray-400 text-sm">Network Fee</span>
+                                <span className="text-sm text-white">~0.0001 LYR</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3">
+                                <span className="text-gray-400 text-sm">Total</span>
+                                <span className="font-bold text-white">{amount} {selectedAssetSymbol}</span>
+                            </div>
                         </div>
 
                         <button
                             onClick={handleSend}
-                            disabled={!address || !amount || isConfirming}
-                            className="btn-gorgeous w-full py-4 rounded-xl text-white font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isLoading}
+                            className="w-full btn-primary py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isConfirming ? "Broadcasting..." : "Confirm & Send"}
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>Broadcasting...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ArrowUpRight className="w-5 h-5" />
+                                    <span>Confirm Send</span>
+                                </>
+                            )}
                         </button>
                     </div>
-                </div>
-            </div>
+                )}
+
+                {step === "success" && (
+                    <div className="flex flex-col items-center justify-center py-8 space-y-6 animate-fade-in">
+                        <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
+                            <CheckCircle2 className="w-10 h-10 text-green-400" />
+                        </div>
+
+                        <div className="text-center">
+                            <h2 className="text-2xl font-bold text-white mb-2">Transaction Sent!</h2>
+                            <p className="text-gray-400 text-sm max-w-[250px] mx-auto break-all">
+                                {txHash}
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={() => router.push("/dashboard")}
+                            className="w-full py-4 bg-white/5 hover:bg-white/10 rounded-xl font-bold text-white border border-white/10 transition-colors"
+                        >
+                            Return to Dashboard
+                        </button>
+                    </div>
+                )}
+
+            </motion.div>
         </div>
     );
 }
