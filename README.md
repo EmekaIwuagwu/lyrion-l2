@@ -13,6 +13,18 @@
 
 ---
 
+## 📸 Screenshots
+
+### Lyrion Wallet
+
+<div align="center">
+<img src="assets/wallet-dashboard.png" alt="Lyrion Wallet Dashboard" width="800"/>
+
+*Multi-asset wallet with LYR, FLR, and USDT support*
+</div>
+
+---
+
 ## ✨ Features
 
 ### 🚀 **High Performance**
